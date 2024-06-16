@@ -1,6 +1,8 @@
 from math import *
 from random import *
+from typing import *
 import pyxel
+
 
 pyxel.init(528, 528, "LABYRINTHE")
 pyxel.load("res.pyxres")
@@ -25,60 +27,237 @@ fenetre_h = 528
 monstre_liste = []
 pioche_liste = []  # TODO: ajouter des pioches pour casser des murs
 
+
+# Pour la génération du labyrinthe
 muter_laby = False  # TODO: ajouter la possibilité de modifier le labyrinthe pour le rendre imparfait
-laby = []
+random_positioning = True  # Choisir si le coffre se place au hasard (mais loin) ou en bas à droite du laby
+deplacements_possibles = {"l": (-1, 0), "r": (1, 0), "u": (0, -1), "d": (0, 1)}
+distance_min = 40  # Distance min de la sortie à l'entrée
+
+
+##############################
+#          Labyrinthe        #
+##############################
+
+
+class Case:
+    def __init__(self):
+        self.__voisines__ = {"u": None, "d": None, "l": None, "r": None}
+        self.__linked__ = {"u": False, "d": False, "l": False, "r": False}
+        self.visite = False
+        self.dist_to_source = -1
+        self.contenu = None
+
+    @property
+    def left(self):
+        return self.__voisines__["l"]
+
+    @property
+    def right(self):
+        return self.__voisines__["r"]
+
+    @property
+    def up(self):
+        return self.__voisines__["u"]
+
+    @property
+    def down(self):
+        return self.__voisines__["d"]
+
+    @left.setter
+    def left(self, value):
+        self.__voisines__["l"] = value
+
+    @right.setter
+    def right(self, value):
+        self.__voisines__["r"] = value
+
+    @up.setter
+    def up(self, value):
+        self.__voisines__["u"] = value
+
+    @down.setter
+    def down(self, value):
+        self.__voisines__["d"] = value
+
+    @property
+    def move_left(self):
+        return self.__linked__["l"]
+
+    @property
+    def move_right(self):
+        return self.__linked__["r"]
+
+    @property
+    def move_up(self):
+        return self.__linked__["u"]
+
+    @property
+    def move_down(self):
+        return self.__linked__["d"]
+
+    @move_left.setter
+    def move_left(self, v):
+        self.__linked__["l"] = v
+
+    @move_right.setter
+    def move_right(self, v):
+        self.__linked__["r"] = v
+
+    @move_up.setter
+    def move_up(self, v):
+        self.__linked__["u"] = v
+
+    @move_down.setter
+    def move_down(self, v):
+        self.__linked__["d"] = v
+
+    @property
+    def voisines(self):
+        return list(filter(lambda x: x is not None, self.__voisines__.values()))
+
+    @property
+    def voisines_visitees(self):
+        return list(
+            filter(lambda x: x is not None and x.visite, self.__voisines__.values())
+        )
+
+    @property
+    def voisines_non_visitees(self):
+        return list(
+            filter(lambda x: x is not None and not x.visite, self.__voisines__.values())
+        )
+
+    def link(self, other, r=True):
+        if other in self.__voisines__.values():
+            self.__linked__[
+                list(filter(lambda x: x[1] == other, self.__voisines__.items()))[0][0]
+            ] = True
+            if r:
+                other.link(self, False)
+        else:
+            raise ValueError("La case n'est pas une case voisine")
+
+    @property
+    def accessibles(self):
+        return [
+            self.__voisines__[d] for d in self.__voisines__.keys() if self.__linked__[d]
+        ]
+
+    @property
+    def accessibles_visites(self):
+        return [
+            self.__voisines__[d]
+            for d in self.__voisines__.keys()
+            if self.__linked__[d] and self.__voisines__[d].visite
+        ]
+
+    @property
+    def accessibles_non_visites(self):
+        return [
+            self.__voisines__[d]
+            for d in self.__voisines__.keys()
+            if self.__linked__[d] and not self.__voisines__[d].visite
+        ]
+
 
 ##############################
 # fonctions d'initialisation #
 ##############################
 
 
+def in_laby(x: int, y: int, w: int, h: int) -> bool:
+    """Cherche si la case (x,y) est dans le labyrinthe"""
+    return 0 <= x < w // 2 and 0 <= y < h // 2
+
+
+# def tableau_distances(laby: List[List[int]], source: Tuple[int]) -> List[List[int]]:
+#     """Calcule les distances de chaque case à la case `source` dans le labyrinthe `laby`"""
+#     w, h = len(laby[0]), len(laby)
+#     dists = [
+#         [-1] * (w // 2) for _ in range(h // 2)
+#     ]  # -1 quand la case n'est pas visitée
+
+#     a_traiter = [(source, 0)]
+#     while len(a_traiter) > 0:
+#         t, d = a_traiter.pop()
+#         x, y = t
+#         dists[y][x] = d
+#         suivantes = list(
+#             map(
+#                 lambda x: (x, d + 1),
+#                 filter(
+#                     lambda t_v: dists[t_v[1] // 2][t_v[0] // 2] == -1,
+#                     voisines((2 * x + 1, 2 * y + 1), laby),
+#                 ),
+#             )
+#         )
+#         print(x, y)
+#         print(voisines((2 * x + 1, 2 * y + 1), laby))
+#         a_traiter.extend(suivantes)
+#     return dists
+
+
 def laby_init(w: int, h: int) -> list[list[int]]:
     """Cette fonction genere un labyrinthe parfait.
-    Entree : les dimensions w et h en cases du labyrinthe
-    Sortie : la liste de listes avec un indice d'etat pour chaque case
-        - 0 : couloir
-        - 1 : mur
-        - 2 : porte de sortie"""
+    Entree : Les dimensions w et h en cases du labyrinthe
+    Sortie: Le labyrinthe généré
+    """
 
-    laby = [[1 for _ in range(w)] for _ in range(h)]
+    # Fonctions aux utiles
+    def gen_point_ok(pos: tuple[int]) -> bool:
+        c = laby[pos[1]][pos[0]]
+        return not c.visite and len(c.voisines_visitees) > 0
 
-    x, y = 0, 0
-    target = (0, 0)
-    deplacements_possibles = [(-1, 0), (1, 0), (0, -1), (0, 1)]
-    deplacements_faisables = []
-    for _ in range((w // 2) * (h // 2) - 1):
-        laby[y * 2 + 1][x * 2 + 1] = 0
-        deplacements_faisables = []
-        for deplacement in deplacements_possibles:
-            if (
-                x + deplacement[0] in range(w // 2)
-                and y + deplacement[1] in range(h // 2)
-                and laby[(y + deplacement[1]) * 2 + 1][(x + deplacement[0]) * 2 + 1]
-                == 1
-            ):
-                deplacements_faisables.append(deplacement)
-        if deplacements_faisables != []:
-            target = choice(deplacements_faisables)
-            laby[y * 2 + 1 + target[1]][x * 2 + 1 + target[0]] = 0
-            x += target[0]
-            y += target[1]
-        else:
-            x, y = 0, 0
-            while laby[y * 2 + 1][x * 2 + 1] != 1:
-                x += 1
-                if x == w // 2:
-                    x = 0
-                    y += 1
-            if x == 0:
-                laby[y * 2][x * 2 + 1] = 0
-            elif y == 0:
-                laby[y * 2 + 1][x * 2] = 0
+    def suiv(pos) -> tuple[int] | None:
+        if pos[0] == w - 1:
+            if pos[1] == h - 1:
+                return None
             else:
-                target = choice([(-1, 0), (0, -1)])
-                laby[y * 2 + 1 + target[1]][x * 2 + 1 + target[0]] = 0
-        laby[y * 2 + 1][x * 2 + 1] = 0
-    laby[h - 2][w - 2] = 2
+                return (0, pos[1] + 1)
+        else:
+            return (pos[0] + 1, pos[1])
+
+    laby = [[Case() for _ in range(w)] for _ in range(h)]
+    for i in range(w):
+        for j in range(h):
+            deplacements_faisables = list(
+                filter(
+                    lambda x: in_laby(i + x[1][0], j + x[1][1], w, h),
+                    deplacements_possibles.items(),
+                )
+            )
+            for d, (di, dj) in deplacements_faisables:
+                laby[j][i].__voisines__[d] = laby[j + dj][i + di]
+
+    last_pos = (0, 0)
+    courante = laby[0][0]
+    stop = False
+    while not stop:
+        suivantes = courante.voisines_non_visitees
+        courante.visite = True
+        if len(suivantes) == 0:
+            # On cherche un nouveau point de génération
+            found = False
+            while not (found or stop):
+                if gen_point_ok(last_pos):
+                    courante = laby[last_pos[1]][last_pos[0]]
+                    courante.link(choice(courante.voisines_visitees))
+                else:
+                    last_pos = suiv(last_pos)
+                    if last_pos is None:
+                        stop = True
+        else:
+            suivante = choice(suivantes)
+            courante.link(suivante)
+            courante = suivante
+
+    if random_positioning:
+        # dists = tableau_distances(laby, (0, 0))
+        # print(dists)
+        pass
+    else:
+        laby[-1][-1].contenu = "sortie"
     return laby
 
 
@@ -126,6 +305,11 @@ def dessin_pioche(x, y):
 def dessin_mur(x, y):
     pyxel.rect(x * 16, y * 16, 16, 16, 0)
     pyxel.blt(x * 16, y * 16, 0, 0, 0, 16, 16)
+
+
+def dessin_mur_friable(x, y):
+    pyxel.rect(x * 16, y * 16, 16, 16, 0)
+    pyxel.blt(x * 16, y * 16, 0, 16, 0, 16, 16)
 
 
 def dessin_couloir(x, y):

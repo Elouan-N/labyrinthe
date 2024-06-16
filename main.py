@@ -9,6 +9,11 @@ pyxel.load("res.pyxres")
 # variables #
 #############
 
+# variables de système
+hold_time = 6 # frames
+repeat_time = 2 # frames
+
+# variables de jeu
 speleo_x = 1
 speleo_y = 1
 
@@ -74,16 +79,16 @@ def laby_init(w:int,h:int) -> list[list[int]]:
 ############################
 
 def speleo_mvt(x,y):
-    if pyxel.btn(pyxel.KEY_RIGHT):
+    if pyxel.btnp(pyxel.KEY_RIGHT,hold_time,repeat_time):
         if x+1 in range(fenetre_w) and laby[y][x+1]==0 :
             x+=1
-    if pyxel.btn(pyxel.KEY_LEFT):
+    if pyxel.btnp(pyxel.KEY_LEFT,hold_time,repeat_time):
         if x-1 in range(fenetre_w) and laby[y][x-1]==0 :
             x-=1
-    if pyxel.btn(pyxel.KEY_DOWN):
+    if pyxel.btnp(pyxel.KEY_DOWN,hold_time,repeat_time):
         if y+1 in range(fenetre_h) and laby[y+1][x]==0 :
             y+=1
-    if pyxel.btn(pyxel.KEY_UP):
+    if pyxel.btnp(pyxel.KEY_UP,hold_time,repeat_time):
         if y-1 in range(fenetre_h) and laby[y-1][x]==0 :
             y-=1
     return(x,y)
@@ -101,6 +106,7 @@ def update():
     # pour avoir le droit de modifier les variables
     global speleo_x, speleo_y, fenetre_x, fenetre_y
 
+    # mise a jour de la position du speleologue avec les fleches du clavier
     speleo_x,speleo_y = speleo_mvt(speleo_x,speleo_y)
     fenetre_x,fenetre_y = fenetre_mvt(fenetre_x,fenetre_y)
 

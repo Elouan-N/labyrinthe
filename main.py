@@ -74,19 +74,16 @@ def laby_init(w:int,h:int) -> list[list[int]]:
 ############################
 
 def speleo_mvt(x,y):
-    if pyxel.btnr(pyxel.KEY_RIGHT):
+    if pyxel.btn(pyxel.KEY_RIGHT):
         if x+1 in range(fenetre_w) and laby[y][x+1]==0 :
             x+=1
     if pyxel.btn(pyxel.KEY_LEFT):
-        print("LEFT")
         if x-1 in range(fenetre_w) and laby[y][x-1]==0 :
             x-=1
     if pyxel.btn(pyxel.KEY_DOWN):
-        print("DOWN")
         if y+1 in range(fenetre_h) and laby[y+1][x]==0 :
             y+=1
     if pyxel.btn(pyxel.KEY_UP):
-        print("UP")
         if y-1 in range(fenetre_h) and laby[y-1][x]==0 :
             y-=1
     return(x,y)
@@ -98,29 +95,42 @@ def fenetre_mvt(fenetre_x,fenetre_y):
 # fonctions principales #
 #########################
 
-laby = laby_init(65,65)
-
 def update():
+    """mise a jour des variables 30 fois par seconde (toutes les frames)"""
+
+    # pour avoir le droit de modifier les variables
     global speleo_x, speleo_y, fenetre_x, fenetre_y
+
     speleo_x,speleo_y = speleo_mvt(speleo_x,speleo_y)
     fenetre_x,fenetre_y = fenetre_mvt(fenetre_x,fenetre_y)
 
 def draw():
+    """dessin 30 fois par seconde (toutes les frames)"""
+
+    # on remet l'ecran tout noir
     pyxel.cls(0)
+
+    # pour chaque case de laby visible dans la fenetre, on dessine un carre et une image
     w = fenetre_w//16
     h = fenetre_h//16
     for i in range(h):
         for j in range(w):
-            if laby[i+fenetre_y][j+fenetre_x] == 0:
+            if laby[i+fenetre_y][j+fenetre_x] == 0: # couloir
                 pyxel.rect(j*16,i*16,16,16,7)
                 pyxel.blt(j*16,i*16,0,0,16,16,16)
-            elif laby[i+fenetre_y][j+fenetre_x] == 1:
+            elif laby[i+fenetre_y][j+fenetre_x] == 1: # mur
                 pyxel.rect(j*16,i*16,16,16,0)
                 pyxel.blt(j*16,i*16,0,0,0,16,16)
-            elif laby[i+fenetre_y][j+fenetre_x] == 2:
+            elif laby[i+fenetre_y][j+fenetre_x] == 2: # porte de sortie
                 pyxel.rect(j*16,i*16,16,16,10)
                 pyxel.blt(j*16,i*16,0,(9-(pyxel.frame_count//2%10))*16,32,16,16)
+
+    # on dessine le personnage (carre et image), pour l'instant decorrele de la fenetre
     pyxel.rect(speleo_x*16,speleo_y*16,16,16,11)
     pyxel.blt(speleo_x*16,speleo_y*16,0,0,48,16,16)
-    pyxel.text(32,16,str(pyxel.frame_count),0)
+
+# initialisation du labyrinthe
+laby = laby_init(33,33)
+
+# fonction qui fait tourner le jeu
 pyxel.run(update,draw)

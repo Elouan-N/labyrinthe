@@ -13,14 +13,16 @@ hold_time = 6  # frames
 repeat_time = 2  # frames
 
 # variables de jeu
-speleo_x = 1
-speleo_y = 1
+speleo_x = 0
+speleo_y = 0
 
-W = H = 5
+W = 16
+H = 16
 fenetre_x = 0
 fenetre_y = 0
 fenetre_w = 16 * (2 * W + 1)
 fenetre_h = 16 * (2 * H + 1)
+fenetre_ratio = 2
 
 monstre_liste = []
 pioche_liste = []  # TODO: ajouter des pioches pour casser des murs
@@ -33,18 +35,46 @@ deplacements_possibles = {"l": (-1, 0), "r": (1, 0), "u": (0, -1), "d": (0, 1)}
 distance_min = 40  # Distance min de la sortie à l'entrée
 
 
+# Couleurs
+NOIR = 0
+B_MARINE = 1
+VIOLET = 2
+B_CYAN = 3
+MARRON = 4
+B_ROI = 5
+B_CLAIR = 6
+BLANC = 7
+MAUVE = 8
+ORANGE = 9
+JAUNE = 10
+TURQUOISE = 11
+B_CIEL = 12
+GRIS = 13
+ROSE = 14
+BEIGE = 15
+
 ##############################
 #          Labyrinthe        #
 ##############################
 
 
 class Case:
-    def __init__(self):
+    def __init__(self, x, y):
         self.__voisines__ = {"u": None, "d": None, "l": None, "r": None}
         self.__linked__ = {"u": False, "d": False, "l": False, "r": False}
         self.visite = False
         self.dist_to_source = -1
         self.contenu = []
+        self.__x = x
+        self.__y = y
+
+    @property
+    def x(self):
+        return self.__x
+
+    @property
+    def y(self):
+        return self.__y
 
     @property
     def left(self):
@@ -128,9 +158,9 @@ class Case:
 
     def link(self, other, r=True):
         if other in self.__voisines__.values():
-            self.__linked__[
-                list(filter(lambda x: x[1] == other, self.__voisines__.items()))[0][0]
-            ] = True
+            i = self.__voisines__.items()
+            k, v = list(map(lambda x: x[0], i)), list(map(lambda x: x[1], i))
+            self.__linked__[k[v.index(other)]] = True
             if r:
                 other.link(self, False)
         else:
@@ -158,6 +188,18 @@ class Case:
             for d in self.__voisines__.keys()
             if self.__linked__[d] and not self.__voisines__[d].visite
         ]
+
+    def __str__(self):
+        return f"({self.x},{self.y})"
+
+    def __repr__(self):
+        s = ""
+        if self.contenu == []:
+            s += "None"
+        else:
+            s += "/".join(self.contenu)
+        s += f"({self.x},{self.y})"
+        return s
 
 
 ##############################
@@ -197,6 +239,16 @@ def in_laby(x: int, y: int, w: int, h: int) -> bool:
 #     return dists
 
 
+def dbg_links(l):
+    for j in range(H):
+        for i in range(W):
+            print(
+                f"{'.' if l[j][i].move_left else ' '}{[' ','.','\'',':'][int(l[j][i].move_up)*2+int(l[j][i].move_down)]}{'.' if l[j][i].move_right else ' '}",
+                end=" ",
+            )
+        print()
+    print()
+
 def laby_init(w: int, h: int) -> list[list[int]]:
     """Cette fonction genere un labyrinthe parfait.
     Entree : Les dimensions w et h en cases du labyrinthe
@@ -213,7 +265,8 @@ def laby_init(w: int, h: int) -> list[list[int]]:
                     print(".", end="")
             print()
         print()
-
+    
+    
     def gen_point_ok(pos: tuple[int]) -> bool:
         c = laby[pos[1]][pos[0]]
         return not c.visite and len(c.voisines_visitees) > 0
@@ -227,7 +280,7 @@ def laby_init(w: int, h: int) -> list[list[int]]:
         else:
             return (pos[0] + 1, pos[1])
 
-    laby = [[Case() for _ in range(w)] for _ in range(h)]
+    laby = [[Case(i, j) for i in range(w)] for j in range(h)]
     for i in range(w):
         for j in range(h):
             deplacements_faisables = list(
@@ -244,24 +297,14 @@ def laby_init(w: int, h: int) -> list[list[int]]:
     stop = False
     while not stop:
         suivantes = courante.voisines_non_visitees
-        print(len(suivantes), "voisines")
         courante.visite = True
         if len(suivantes) == 0:
-            dbg_visite()
-            print("REGEN")
             # On cherche un nouveau point de génération
             found = False
             while not (found or stop):
-                print(last_pos)
                 if gen_point_ok(last_pos):
-                    print("NEW GEN POINT:", last_pos)
                     courante = laby[last_pos[1]][last_pos[0]]
                     suivante = choice(courante.voisines_visitees)
-                    if (
-                        suivante not in courante.__voisines__.values()
-                        or courante not in suivante.__voisines__.values()
-                    ):
-                        print("ERR00", courante, suivante)
                     courante.link(suivante)
                     found = True
                 else:
@@ -279,6 +322,7 @@ def laby_init(w: int, h: int) -> list[list[int]]:
         pass
     else:
         laby[-1][-1].contenu = ["sortie"]
+    dbg_links(laby)
     return laby
 
 
@@ -291,13 +335,13 @@ def speleo_mvt(x, y):
     if pyxel.btnp(pyxel.KEY_RIGHT, hold_time, repeat_time):
         if in_laby(x + 1, y, W, H) and laby[y][x].move_right:
             x += 1
-    if pyxel.btnp(pyxel.KEY_LEFT, hold_time, repeat_time):
+    elif pyxel.btnp(pyxel.KEY_LEFT, hold_time, repeat_time):
         if in_laby(x - 1, y, W, H) and laby[y][x].move_left:
             x -= 1
-    if pyxel.btnp(pyxel.KEY_DOWN, hold_time, repeat_time):
+    elif pyxel.btnp(pyxel.KEY_DOWN, hold_time, repeat_time):
         if in_laby(x, y + 1, W, H) and laby[y][x].move_down:
             y += 1
-    if pyxel.btnp(pyxel.KEY_UP, hold_time, repeat_time):
+    elif pyxel.btnp(pyxel.KEY_UP, hold_time, repeat_time):
         if in_laby(x, y - 1, W, H) and laby[y][x].move_up:
             y -= 1
     return (x, y)
@@ -313,7 +357,6 @@ def fenetre_mvt(fenetre_x, fenetre_y):
 
 
 def dessin_perso():
-    pyxel.rect((2 * speleo_x + 1) * 16, (2 * speleo_y + 1) * 16, 16, 16, 11)
     pyxel.blt(
         (2 * speleo_x + 1) * 16 + fenetre_x * 16,
         (2 * speleo_y + 1) * 16 + fenetre_y * 16,
@@ -330,22 +373,18 @@ def dessin_pioche(x, y):
 
 
 def dessin_mur(x, y):
-    pyxel.rect(x * 16, y * 16, 16, 16, 0)
     pyxel.blt(x * 16, y * 16, 0, 0, 0, 16, 16)
 
 
 def dessin_mur_friable(x, y):
-    pyxel.rect(x * 16, y * 16, 16, 16, 0)
     pyxel.blt(x * 16, y * 16, 0, 16, 0, 16, 16)
 
 
 def dessin_couloir(x, y):
-    pyxel.rect(x * 16, y * 16, 16, 16, 7)
     pyxel.blt(x * 16, y * 16, 0, 0, 16, 16, 16)
 
 
 def dessin_porte(x, y):
-    pyxel.rect(x * 16, y * 16, 16, 16, 10)
     pyxel.blt(x * 16, y * 16, 0, (9 - (pyxel.frame_count // 2 % 10)) * 16, 32, 16, 16)
 
 
@@ -372,34 +411,32 @@ def update():
 
 def draw():
     """dessin 30 fois par seconde (toutes les frames)"""
-
     # on remet l'ecran tout noir
     pyxel.cls(0)
 
     # pour chaque case de laby visible dans la fenetre, on dessine un carre et une image
-    for i in range(W):
-        for j in range(H):
-            pyxel.rect(i * 32, j * 32, 32, 32, (i + j) % 15 + 1)
+    for j in range(H):
+        for i in range(W):
             dessin_mur(2 * i, 2 * j)
-
+  
             if laby[j][i].move_left:
-                dessin_couloir(2 * i + 1, 2 * j)
-            else:
-                dessin_mur(2 * i + 1, 2 * j)
-
-            if laby[j][i].move_up:
                 dessin_couloir(2 * i, 2 * j + 1)
             else:
                 dessin_mur(2 * i, 2 * j + 1)
 
-            dessin_couloir(j * 2 + 1, i * 2 + 1)
+            if laby[j][i].move_up:
+                dessin_couloir(2 * i + 1, 2 * j)
+            else:
+                dessin_mur(2 * i+1, 2 * j)
+
+            dessin_couloir(2 * i + 1, 2 * j + 1)
             for elt in laby[j][i].contenu:
                 fonctions_dessin[elt](2 * i + 1, 2 * j + 1)
 
     for i in range(2 * W + 1):
-        dessin_mur(2 * H, i)
+        dessin_mur(i, 2*H)
     for j in range(2 * H):
-        dessin_mur(j, 2 * W)
+        dessin_mur(2*W, j)
 
     # on dessine le personnage (carre et image), pour l'instant decorrele de la fenetre
     dessin_perso()
@@ -407,9 +444,11 @@ def draw():
 
 # initialisation du labyrinthe
 laby = laby_init(W, H)
+dbg_links(laby)
 
-pyxel.init(fenetre_w, fenetre_h, "LABYRINTHE", 30, pyxel.KEY_W, 4)
+pyxel.init(fenetre_w, fenetre_h, "LABYRINTHE", 30, fenetre_ratio)
 pyxel.load("res.pyxres")
 
+dbg_links(laby)
 # fonction qui fait tourner le jeu
 pyxel.run(update, draw)

@@ -33,8 +33,8 @@ speleo_x = 0
 speleo_y = 0
 
 # dimensions du labyrinthe (en croisements de couloirs)
-W = 24
-H = 32
+W = 5
+H = 5
 
 # coordonnees de la fenetre dans le labyrinthe (en cases)
 fenetre_x = 0
@@ -79,6 +79,8 @@ ROSE = 14
 BEIGE = 15
 
 apostrophe = "'"
+
+DEBUG = True
 
 ##############################
 #          Labyrinthe        #
@@ -238,16 +240,19 @@ def in_laby(x: int, y: int, w: int, h: int) -> bool:
     """Cherche si la case (x,y) est dans le labyrinthe"""
     return 0 <= x < w and 0 <= y < h
 
+def debug(*args,**kwargs):
+    if DEBUG:
+        print(*args,**kwargs)
 
 def dbg_links(l):
     for j in range(H):
         for i in range(W):
-            print(
+            debug(
                 f"{'.' if l[j][i].move_left else ' '}{[' ','.',apostrophe,':'][int(l[j][i].move_up)*2+int(l[j][i].move_down)]}{'.' if l[j][i].move_right else ' '}",
                 end=" ",
             )
-        print()
-    print()
+        debug()
+    debug()
 
 
 def laby_init(w: int, h: int) -> list[list[int]]:
@@ -261,11 +266,18 @@ def laby_init(w: int, h: int) -> list[list[int]]:
         for j in range(h):
             for i in range(w):
                 if laby[j][i].visite:
-                    print("X", end="")
+                    debug("X", end="")
                 else:
-                    print(".", end="")
-            print()
-        print()
+                    debug(".", end="")
+            debug()
+        debug()
+
+    def dbg_dist_to_source():
+        for j in range(h):
+            for i in range(w):
+                debug(str(laby[j][i].dist_to_source)+"  ", end="")
+            debug()
+        debug()
 
     def gen_point_ok(pos: tuple[int]) -> bool:
         c = laby[pos[1]][pos[0]]
@@ -294,6 +306,7 @@ def laby_init(w: int, h: int) -> list[list[int]]:
 
     last_pos = (0, 0)
     courante = laby[0][0]
+    courante.dist_to_source = 0
     stop = False
     while not stop:
         suivantes = courante.voisines_non_visitees
@@ -306,6 +319,7 @@ def laby_init(w: int, h: int) -> list[list[int]]:
                     courante = laby[last_pos[1]][last_pos[0]]
                     suivante = choice(courante.voisines_visitees)
                     courante.link(suivante)
+                    courante.dist_to_source = suivante.dist_to_source + 1
                     found = True
                 else:
                     last_pos = suiv(last_pos)
@@ -314,15 +328,22 @@ def laby_init(w: int, h: int) -> list[list[int]]:
         else:
             suivante = choice(suivantes)
             courante.link(suivante)
+            suivante.dist_to_source = courante.dist_to_source + 1
             courante = suivante
 
     if random_positioning:
-        # dists = tableau_distances(laby, (0, 0))
-        # print(dists)
-        pass
+        max_dist = 0
+        case_de_sortie = laby[0][0]
+        for j in range(h):
+            for i in range(w):
+                if laby[j][i].dist_to_source >= max_dist:
+                    max_dist = laby[j][i].dist_to source
+                    case_de_sortie = laby[j][i]
+        case_de_sortie.contenu = ["sortie"]
     else:
         laby[-1][-1].contenu = ["sortie"]
-    dbg_links(laby)
+    # dbg_links(laby)
+    dbg_dist_to_source()
     return laby
 
 

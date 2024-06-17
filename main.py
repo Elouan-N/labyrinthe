@@ -1,7 +1,19 @@
 from math import *
 from random import *
 from typing import *
-import pyxel
+import pyxel, os
+
+
+# Calcul de la taille de l'écran
+with os.popen("xwininfo -root | grep -Po '(Width|Height): \K.*'", "r") as f:
+    l = list(map(lambda x: x.strip(), f.readlines()))
+    if len(l) == 0:
+        # Ca n'a pas marché
+        SCREEN_W = 1900
+        SCREEN_H = 980
+    else:
+        SCREEN_W = int(l[0]) - 20
+        SCREEN_H = int(l[1]) - 100
 
 
 #############
@@ -13,6 +25,9 @@ hold_time = 6  # frames
 repeat_time = 2  # frames
 
 # variables de jeu
+
+# SPELEOLOGUE
+periode_flash_perso = 3
 # coordonees du speleologue (en croisements de couloirs)
 speleo_x = 0
 speleo_y = 0
@@ -24,11 +39,11 @@ H = 32
 # coordonnees de la fenetre dans le labyrinthe (en cases)
 fenetre_x = 0
 fenetre_y = 0
-# taille de la fenetre (en px)
-fenetre_w = min(16*33,16 * (2 * W + 1))
-fenetre_h = min(16*33,16 * (2 * H + 1))
 # ratio d'agrandissement
 fenetre_ratio = 2
+# taille de la fenetre (en px)
+fenetre_w = min(16 * 33, SCREEN_W, 16 * (2 * W + 1))
+fenetre_h = min(16 * 33, SCREEN_H, 16 * (2 * H + 1))
 
 # liste de coordonnees des monstres
 monstre_liste = []
@@ -234,6 +249,7 @@ def dbg_links(l):
         print()
     print()
 
+
 def laby_init(w: int, h: int) -> list[list[int]]:
     """Cette fonction genere un labyrinthe parfait.
     Entree : Les dimensions w et h en cases du labyrinthe
@@ -251,12 +267,11 @@ def laby_init(w: int, h: int) -> list[list[int]]:
             print()
         print()
 
-
     def gen_point_ok(pos: tuple[int]) -> bool:
         c = laby[pos[1]][pos[0]]
         return not c.visite and len(c.voisines_visitees) > 0
 
-    def suiv(pos): # -> tuple[int] | None:
+    def suiv(pos):  # -> tuple[int] | None:
         if pos[0] == w - 1:
             if pos[1] == h - 1:
                 return None
@@ -334,16 +349,16 @@ def speleo_mvt(x, y):
 
 def fenetre_mvt(x, y):
     if pyxel.btnp(pyxel.KEY_D, hold_time, repeat_time):
-        if in_laby(x + fenetre_w//16,y,2*W+1,2*H+1):
+        if in_laby(x + fenetre_w // 16, y, 2 * W + 1, 2 * H + 1):
             x += 1
     if pyxel.btnp(pyxel.KEY_Q, hold_time, repeat_time):
-        if in_laby(x - 1,y,2*W+1,2*H+1):
+        if in_laby(x - 1, y, 2 * W + 1, 2 * H + 1):
             x -= 1
     if pyxel.btnp(pyxel.KEY_S, hold_time, repeat_time):
-        if in_laby(x,y + fenetre_h//16,2*W+1,2*H+1):
+        if in_laby(x, y + fenetre_h // 16, 2 * W + 1, 2 * H + 1):
             y += 1
     if pyxel.btnp(pyxel.KEY_Z, hold_time, repeat_time):
-        if in_laby(x,y - 1,2*W+1,2*H+1):
+        if in_laby(x, y - 1, 2 * W + 1, 2 * H + 1):
             y -= 1
     return x, y
 
@@ -358,7 +373,7 @@ def dessin_perso():
         (2 * speleo_x + 1) * 16 - fenetre_x * 16,
         (2 * speleo_y + 1) * 16 - fenetre_y * 16,
         0,
-        0,
+        (pyxel.frame_count // periode_flash_perso % 4) * 16,
         48,
         16,
         16,
@@ -366,27 +381,36 @@ def dessin_perso():
 
 
 def dessin_pioche(x, y):
-    pyxel.blt((x - fenetre_x) * 16, (y - fenetre_y) * 16, 0,  0, 64, 16, 16)
+    pyxel.blt((x - fenetre_x) * 16, (y - fenetre_y) * 16, 0, 0, 64, 16, 16)
 
 
 def dessin_mur(x, y):
-    pyxel.blt((x - fenetre_x) * 16, (y - fenetre_y) * 16, 0,  0,  0, 16, 16)
+    pyxel.blt((x - fenetre_x) * 16, (y - fenetre_y) * 16, 0, 0, 0, 16, 16)
 
 
 def dessin_mur_friable(x, y):
-    pyxel.blt((x - fenetre_x) * 16, (y - fenetre_y) * 16, 0, 16,  0, 16, 16)
+    pyxel.blt((x - fenetre_x) * 16, (y - fenetre_y) * 16, 0, 16, 0, 16, 16)
 
 
 def dessin_couloir(x, y):
-    pyxel.blt((x - fenetre_x) * 16, (y - fenetre_y) * 16, 0,  0, 16, 16, 16)
+    pyxel.blt((x - fenetre_x) * 16, (y - fenetre_y) * 16, 0, 0, 16, 16, 16)
 
 
 def dessin_porte(x, y):
-    pyxel.blt((x - fenetre_x) * 16, (y - fenetre_y) * 16, 0, (9 - (pyxel.frame_count // 2 % 10)) * 16, 32, 16, 16)
+    pyxel.blt(
+        (x - fenetre_x) * 16,
+        (y - fenetre_y) * 16,
+        0,
+        (9 - (pyxel.frame_count // 2 % 10)) * 16,
+        32,
+        16,
+        16,
+    )
 
 
 def dessin_victoire():
-    pyxel.rect(fenetre_w//4,fenetre_h//4,fenetre_w//2,fenetre_h//2,10)
+    pyxel.rect(fenetre_w // 4, fenetre_h // 4, fenetre_w // 2, fenetre_h // 2, 10)
+
 
 fonctions_dessin = {
     "sortie": dessin_porte,
@@ -437,7 +461,7 @@ def draw():
                 if laby[j][i].move_up:
                     dessin_couloir(2 * i + 1, 2 * j)
                 else:
-                    dessin_mur(2 * i+1, 2 * j)
+                    dessin_mur(2 * i + 1, 2 * j)
 
                 # dessin du croisement de couloir sur lequel on est
                 dessin_couloir(2 * i + 1, 2 * j + 1)
@@ -448,15 +472,16 @@ def draw():
 
         # dessin des murs en bas et à droite
         for i in range(2 * W + 1):
-            dessin_mur(i, 2*H)
+            dessin_mur(i, 2 * H)
         for j in range(2 * H):
-            dessin_mur(2*W, j)
+            dessin_mur(2 * W, j)
 
         # dessin du speleologue
         dessin_perso()
 
+
 # initialisation de la fenetre
-pyxel.init(fenetre_w, fenetre_h, "LABYRINTHE", 30, fenetre_ratio)
+pyxel.init(fenetre_w, fenetre_h, "LABYRINTHE", 30, None, fenetre_ratio)
 
 # chargement des ressources
 pyxel.load("res.pyxres")

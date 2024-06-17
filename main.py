@@ -33,8 +33,8 @@ speleo_x = 0
 speleo_y = 0
 
 # dimensions du labyrinthe (en croisements de couloirs)
-W = 5
-H = 5
+W = 16
+H = 16
 
 # coordonnees de la fenetre dans le labyrinthe (en cases)
 fenetre_x = 0
@@ -240,9 +240,11 @@ def in_laby(x: int, y: int, w: int, h: int) -> bool:
     """Cherche si la case (x,y) est dans le labyrinthe"""
     return 0 <= x < w and 0 <= y < h
 
-def debug(*args,**kwargs):
+
+def debug(*args, **kwargs):
     if DEBUG:
-        print(*args,**kwargs)
+        print(*args, **kwargs)
+
 
 def dbg_links(l):
     for j in range(H):
@@ -275,7 +277,7 @@ def laby_init(w: int, h: int) -> list[list[int]]:
     def dbg_dist_to_source():
         for j in range(h):
             for i in range(w):
-                debug(str(laby[j][i].dist_to_source)+"  ", end="")
+                debug(str(laby[j][i].dist_to_source) + "  ", end="")
             debug()
         debug()
 
@@ -337,7 +339,7 @@ def laby_init(w: int, h: int) -> list[list[int]]:
         for j in range(h):
             for i in range(w):
                 if laby[j][i].dist_to_source >= max_dist:
-                    max_dist = laby[j][i].dist_to source
+                    max_dist = laby[j][i].dist_to_source
                     case_de_sortie = laby[j][i]
         case_de_sortie.contenu = ["sortie"]
     else:

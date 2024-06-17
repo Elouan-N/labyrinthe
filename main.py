@@ -13,15 +13,15 @@ hold_time = 6  # frames
 repeat_time = 2  # frames
 
 # variables de jeu
-speleo_x = 1
-speleo_y = 1
+speleo_x = 0
+speleo_y = 0
 
-W = 16
-H = 16
+W = 24
+H = 32
 fenetre_x = 0
 fenetre_y = 0
-fenetre_w = 16 * (2 * W + 1)
-fenetre_h = 16 * (2 * H + 1)
+fenetre_w = min(16*33,16 * (2 * W + 1))
+fenetre_h = min(16*33,16 * (2 * H + 1))
 fenetre_ratio = 2
 
 monstre_liste = []
@@ -352,18 +352,18 @@ def speleo_mvt(x, y):
 
 def fenetre_mvt(x, y):
     if pyxel.btnp(pyxel.KEY_D, hold_time, repeat_time):
-        if x + 1 in range(laby_w - 32):
+        if in_laby(x + fenetre_w//16,y,2*W+1,H+1):
             x += 1
     if pyxel.btnp(pyxel.KEY_Q, hold_time, repeat_time):
-        if x - 1 in range(laby_w - 32):
+        if x - 1 in range(W - 32):
             x -= 1
     if pyxel.btnp(pyxel.KEY_S, hold_time, repeat_time):
-        if y + 1 in range(laby_h - 32):
+        if y + 1 in range(H - 32):
             y += 1
     if pyxel.btnp(pyxel.KEY_Z, hold_time, repeat_time):
-        if y - 1 in range(laby_h - 32):
+        if y - 1 in range(H - 32):
             y -= 1
-    return (x, y)
+    return x, y
 
 
 #########################
@@ -384,23 +384,23 @@ def dessin_perso():
 
 
 def dessin_pioche(x, y):
-    pyxel.blt(x * 16 + fenetre_x, y * 16 + fenetre_x * 16, 0, 0, 64, 16, 16)
+    pyxel.blt((x - fenetre_x) * 16 , (y-fenetre_y) * 16, 0, 0, 64, 16, 16)
 
 
 def dessin_mur(x, y):
-    pyxel.blt(x * 16, y * 16, 0, 0, 0, 16, 16)
+    pyxel.blt((x - fenetre_x) * 16, (y-fenetre_y) * 16, 0, 0, 0, 16, 16)
 
 
 def dessin_mur_friable(x, y):
-    pyxel.blt(x * 16, y * 16, 0, 16, 0, 16, 16)
+    pyxel.blt((x - fenetre_x) * 16, (y-fenetre_y) * 16, 0, 16, 0, 16, 16)
 
 
 def dessin_couloir(x, y):
-    pyxel.blt(x * 16, y * 16, 0, 0, 16, 16, 16)
+    pyxel.blt((x - fenetre_x)* 16, (y- fenetre_y) * 16, 0, 0, 16, 16, 16)
 
 
 def dessin_porte(x, y):
-    pyxel.blt(x * 16, y * 16, 0, (9 - (pyxel.frame_count // 2 % 10)) * 16, 32, 16, 16)
+    pyxel.blt((x -fenetre_x)* 16, (y - fenetre_y) * 16, 0, (9 - (pyxel.frame_count // 2 % 10)) * 16, 32, 16, 16)
 
 def dessin_victoire():
     pyxel.rect(fenetre_w//4,fenetre_h//4,fenetre_w//2,fenetre_h//2,10)
@@ -423,14 +423,15 @@ def update():
 
     # mise a jour de la position du speleologue avec les fleches du clavier
     speleo_x, speleo_y = speleo_mvt(speleo_x, speleo_y)
-    fenetre_x, fenetre_y = fenetre_mvt(fenetre_x, fenetre_y)
+    fenetre_x, fenetre_y = a,b = fenetre_mvt(fenetre_x, fenetre_y)
+    print("ab",a,b)
 
 
 def draw():
-    """dessin 30 fois par seconde (toutes les frames)"""
-    if victoire == True:
+    """dessin 30 fois par seconde (toutes les frames)""" 
+    if victoire:
         dessin_victoire()
-    elif game_over == True:
+    elif game_over:
         dessin_game_over()
     else:
         # on remet l'ecran tout noir
